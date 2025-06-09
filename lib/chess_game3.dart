@@ -20,12 +20,15 @@ class _ChessGame3State extends State<ChessGame3> {
 
   List<List<int>> validMoves = [];
 
-List<ChessPiece> whiteKilledPieces=[]; //by black player
+  List<ChessPiece> whiteKilledPieces = []; //by black player
 
-List<ChessPiece> blackKilledPieces=[];//by white player
+  List<ChessPiece> blackKilledPieces = []; //by white player
 
-bool isWhiteTurn=true;
+  bool isWhiteTurn = true;
 
+  List<int> whiteKingPosition = [7, 4];
+  List<int> blackKingPosition = [0, 4];
+  bool checkStatus = false;
   @override
   void initState() {
     // TODO: implement initState
@@ -67,40 +70,41 @@ bool isWhiteTurn=true;
   void _pieceSelected(int row, int col) {
     setState(() {
       // if no0 selection is made, this is what initially happendss
-      if (selectedPiece==null&& board[row][col] != null) {
-        if(board[row][col]!.isWhite==isWhiteTurn){
-
-        // Select a piece of the current player's color
-        selectedRow = row;
-        selectedCol = col;
-        selectedPiece = board[row][col];
+      if (selectedPiece == null && board[row][col] != null) {
+        if (board[row][col]!.isWhite == isWhiteTurn) {
+          // Select a piece of the current player's color
+          selectedRow = row;
+          selectedCol = col;
+          selectedPiece = board[row][col];
         }
       }
       //this is to change the selected piece of the surrent collor.
-      //eg, to select the king when i am currrently selecting the 
-      else if(board[row][col]!=null && board[row][col]!.isWhite== selectedPiece!.isWhite){
-         selectedRow = row;
+      //eg, to select the king when i am currrently selecting the
+      else if (board[row][col] != null &&
+          board[row][col]!.isWhite == selectedPiece!.isWhite) {
+        selectedRow = row;
         selectedCol = col;
         selectedPiece = board[row][col];
-
       }
       // if theer is a piece and user taps on a swaure that is valid move , it moves there
-    else if(selectedPiece!=null&&validMoves.any((element)=>element[0]==row&& element[1]==col)){
-      movePiece(row, col);
-    }
-      validMoves = calculateRawValidMoves(
+      else if (selectedPiece != null &&
+          validMoves.any((element) => element[0] == row && element[1] == col)) {
+        movePiece(row, col);
+      }
+      validMoves = calculateRealValidMoves(
         selectedRow,
         selectedCol,
         selectedPiece,
+        true,
       );
     });
   }
 
   List<List<int>> calculateRawValidMoves(int row, int col, ChessPiece? piece) {
     List<List<int>> candidateMoves = [];
-if(piece==null){
-  return [];
-}
+    if (piece == null) {
+      return [];
+    }
     int direction = piece.isWhite ? -1 : 1;
 
     switch (piece.type) {
@@ -120,12 +124,12 @@ if(piece==null){
         // this is to retunn moves when another kill can be done diagonally
         if (isInboard(row + direction, col - 1) &&
             board[row + direction][col - 1] != null &&
-            board[row + direction][col - 1]!.isWhite) {
+            board[row + direction][col - 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col - 1]);
         }
         if (isInboard(row + direction, col + 1) &&
             board[row + direction][col + 1] != null &&
-            board[row + direction][col + 1]!.isWhite) {
+            board[row + direction][col + 1]!.isWhite != piece.isWhite) {
           candidateMoves.add([row + direction, col + 1]);
         }
         break;
@@ -263,13 +267,13 @@ if(piece==null){
           var newRow = row + direction[0];
           var newCol = col + direction[1];
           if (!isInboard(newRow, newCol)) {
-            break;
+            continue;
           }
           if (board[newRow][newCol] != null) {
             if (board[newRow][newCol]!.isWhite != piece.isWhite) {
               candidateMoves.add([newRow, newCol]);
             }
-            break;
+            continue;
           }
           candidateMoves.add([newRow, newCol]);
         }
@@ -280,49 +284,241 @@ if(piece==null){
     return candidateMoves;
   }
 
+  //calculate real valid moves
+  List<List<int>> calculateRealValidMoves(
+    int row,
+    int col,
+    ChessPiece? piece,
+    bool checkSimulation,
+  ) {
+    List<List<int>> realValidMoves = [];
+    List<List<int>> candidateMoves = calculateRawValidMoves(row, col, piece);
 
-void movePiece(int newRow,int newCol){
-  // storing the killed pieces
-  if(board[newRow][newCol]!=null){
-    var killedPiece=board[newRow][newCol];
-    if(killedPiece!.isWhite){
-      whiteKilledPieces.add(killedPiece);
-    }else{
-    blackKilledPieces.add(killedPiece);
-    
+    // filter out other move that can put king in check Status(),
+    if (checkSimulation) {
+      for (var move in candidateMoves) {
+        int endRow = move[0];
+        int endCol = move[1];
+        if (simulationMoveIsSafe(piece!, row, col, endRow, endCol)) {
+          realValidMoves.add(move);
+        }
+      }
+    } else {
+      realValidMoves = candidateMoves;
     }
+    return realValidMoves;
   }
-board[newRow][newCol]=selectedPiece;
-board[selectedRow][selectedCol]=null;
-setState(() {
-  selectedPiece=null;
-  selectedRow=-1;
-  selectedCol=-1;
-  validMoves=[];
-});
-}
+
+  void movePiece(int newRow, int newCol) {
+    // storing the killed pieces
+    if (board[newRow][newCol] != null) {
+      var killedPiece = board[newRow][newCol];
+      if (killedPiece!.isWhite) {
+        whiteKilledPieces.add(killedPiece);
+      } else {
+        blackKilledPieces.add(killedPiece);
+      }
+    }
+
+    if (selectedPiece!.type == ChessPieceType.king) {
+      if (selectedPiece!.isWhite) {
+        whiteKingPosition = [newRow, newCol];
+      } else {
+        blackKingPosition = [newRow, newCol];
+      }
+    }
+    if (isKingInChecked(!isWhiteTurn)) {
+      checkStatus = true;
+    } else {
+      checkStatus = false;
+    }
+    board[newRow][newCol] = selectedPiece;
+    board[selectedRow][selectedCol] = null;
+    setState(() {
+      selectedPiece = null;
+      selectedRow = -1;
+      selectedCol = -1;
+      validMoves = [];
+    });
+    if (isCheckMate(!isWhiteTurn)) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog.adaptive(
+              title: Text("CHECKMATE"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    
+      Navigator.pop(context);
+      resetGame();
+                  },
+                  child: Text("Restart the game"),
+                ),
+              ],
+            ),
+      );
+    }
+    isWhiteTurn = !isWhiteTurn;
+  }
+
+  bool isKingInChecked(bool isWhiteKing) {
+    // Use a list to store the king's position
+    List<int> kingPosition =
+        isWhiteKing ? whiteKingPosition : blackKingPosition;
+    // int kingRow = kingPosition[0];
+    // int kingCol = kingPosition[1];
+
+    // Check all opponent pieces to see if any can attack the king
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 8; col++) {
+        // for same color, skip``
+        if (board[row][col] == null ||
+            board[row][col]!.isWhite == isWhiteKing) {
+          continue;
+        }
+
+        //get the all available valid moves of  selected piece
+        List<List<int>> pieceValidMoves = calculateRealValidMoves(
+          row,
+          col,
+          board[row][col],
+          false,
+        );
+        //return true is the kings position is any of this valid moves of the curret selected piece
+        if (pieceValidMoves.any(
+          (move) => move[0] == kingPosition[0] && move[1] == kingPosition[1],
+        )) {
+          return true;
+        }
+        // for (var move in pieceValidMoves) {
+        //   if (move[0] == kingRow && move[1] == kingCol) {
+        //     return true;
+        //   }
+        // }
+      }
+    }
+    return false;
+  }
+
+  bool simulationMoveIsSafe(
+    ChessPiece piece,
+    int startRow,
+    int startCol,
+    int endRow,
+    int endCol,
+  ) {
+    ChessPiece? originalDestinationPiece = board[endRow][endCol];
+    //if the piece is king , save is cureent positionn and update to new one
+    List<int>? originalKingPosition;
+    if (piece.type == ChessPieceType.king) {
+      originalKingPosition =
+          piece.isWhite ? whiteKingPosition : blackKingPosition;
+
+      //update king position
+      if (piece.isWhite) {
+        whiteKingPosition = [endRow, endCol];
+      } else {
+        blackKingPosition = [endRow, endCol];
+      }
+    }
+
+    // simulate the move
+    board[endRow][endCol] = piece;
+    board[startRow][startCol] = null;
+
+    // check if our king is underattack
+    bool kingIsCheck = isKingInChecked(piece.isWhite);
+
+    //restore to original state
+    board[startRow][startCol] = piece;
+    board[endRow][endCol] = originalDestinationPiece;
+
+    //if the piece was king , restore its orifin position
+    if (piece.type == ChessPieceType.king) {
+      if (piece.isWhite) {
+        whiteKingPosition = originalKingPosition!;
+      } else {
+        blackKingPosition = originalKingPosition!;
+      }
+    }
+    return !kingIsCheck;
+  }
+
+  bool isCheckMate(bool isWhiteKing) {
+    // if king is not in check, it not Checkmate(),
+    if (!isKingInChecked(isWhiteKing)) {
+      return false;
+    }
+
+    //if there is at least one legal move for any  okayers piecesm then its not checkmate
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        // Check if the piece belongs to the player whose king is being checked
+        if (board[i][j] == null || board[i][j]!.isWhite != isWhiteKing) {
+          continue;
+        }
+        List<List<int>> pieceValidMoves = calculateRealValidMoves(
+          i,
+          j,
+          board[i][j],
+          true,
+        );
+        if (pieceValidMoves.isNotEmpty) {
+          return false;
+        }
+      }
+    }
+
+    // if none of the above conditions are met, then there is no legal moves left to make so it's checkmate
+    return true;
+  }
+
+  void resetGame() {
+    setState(() {
+      _initializeBoard();
+      selectedPiece = null;
+      selectedRow = -1;
+      selectedCol = -1;
+      validMoves = [];
+      whiteKilledPieces.clear();
+      blackKilledPieces.clear();
+      isWhiteTurn = true;
+      whiteKingPosition = [7, 4];
+      blackKingPosition = [0, 4];
+      checkStatus = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: ElevatedButton(
+        onPressed: resetGame,
+        child: Text("Restart"),
+      ),
       body: Column(
         children: [
           Expanded(
             child: GridView.builder(
-gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 10),              
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 10,
+              ),
               itemCount: whiteKilledPieces.length,
               itemBuilder: (context, index) {
-              return whiteKilledPieces[index].symbol;
-            },),
+                return whiteKilledPieces[index].symbol;
+              },
+            ),
           ),
-          
-          
-          Expanded(flex: 2,
+          Text(checkStatus ? "CHECK ! ! !" : ""),
+          Expanded(
+            flex: 2,
             child: GridView.builder(
               itemCount: 64,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
               ),
-            
+
               itemBuilder: (context, index) {
                 int row = index ~/ 8;
                 int col = index % 8;
@@ -349,13 +545,15 @@ gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 10)
           ),
           Expanded(
             child: GridView.builder(
-gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 10),              
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 10,
+              ),
               itemCount: blackKilledPieces.length,
               itemBuilder: (context, index) {
-              return blackKilledPieces[index].symbol;
-            },),
+                return blackKilledPieces[index].symbol;
+              },
+            ),
           ),
-          
         ],
       ),
     );
