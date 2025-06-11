@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_chess_game/chess_board.dart';
+// import 'package:flutter_chess_game/chess_board.dart';
 import 'package:flutter_chess_game/helper/helper_methods.dart';
 import 'package:flutter_chess_game/utils/chess_piece.dart';
 import 'package:flutter_chess_game/utils/square.dart';
+import 'package:flutter_chess_game/utils/string_const.dart';
 
 class ChessGame3 extends StatefulWidget {
   const ChessGame3({super.key});
@@ -29,6 +30,7 @@ class _ChessGame3State extends State<ChessGame3> {
   List<int> whiteKingPosition = [7, 4];
   List<int> blackKingPosition = [0, 4];
   bool checkStatus = false;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -86,7 +88,7 @@ class _ChessGame3State extends State<ChessGame3> {
         selectedCol = col;
         selectedPiece = board[row][col];
       }
-      // if theer is a piece and user taps on a swaure that is valid move , it moves there
+      // if theer is a piece and user taps on a square that is valid move , it moves there
       else if (selectedPiece != null &&
           validMoves.any((element) => element[0] == row && element[1] == col)) {
         movePiece(row, col);
@@ -144,7 +146,7 @@ class _ChessGame3State extends State<ChessGame3> {
           var i = 1;
           while (true) {
             var newRow = row + i * direction[0];
-            var newCol = row + i * direction[1];
+            var newCol = col + i * direction[1];
             //there is no next move, ie end of the board
             if (!isInboard(newRow, newCol)) {
               break;
@@ -309,8 +311,62 @@ class _ChessGame3State extends State<ChessGame3> {
     return realValidMoves;
   }
 
+  // void movePiece(int newRow, int newCol) {
+  //   // storing the killed pieces
+  //   if (board[newRow][newCol] != null) {
+  //     var killedPiece = board[newRow][newCol];
+  //     if (killedPiece!.isWhite) {
+  //       whiteKilledPieces.add(killedPiece);
+  //     } else {
+  //       blackKilledPieces.add(killedPiece);
+  //     }
+  //   }
+  //   if (selectedPiece!.type == ChessPieceType.king) {
+  //     if (selectedPiece!.isWhite) {
+  //       whiteKingPosition = [newRow, newCol];
+  //     } else {
+  //       blackKingPosition = [newRow, newCol];
+  //     }
+  //   }
+  //   if (isKingInChecked(!isWhiteTurn)) {
+  //       checkStatus=true;
+  //   } else {
+  //     checkStatus = false;
+  //   }
+  //   // debugPrint(checkStatus.toString());
+  //   board[newRow][newCol] = selectedPiece;
+  //   board[selectedRow][selectedCol] = null;
+  //   setState(() {
+  //     selectedPiece = null;
+  //     selectedRow = -1;
+  //     selectedCol = -1;
+  //     validMoves = [];
+  //     // checkStatus;
+  //   });
+  //   if (isCheckMate(!isWhiteTurn)) {
+  //     showDialog(
+  //       context: context,
+  //       builder:
+  //           (context) => AlertDialog.adaptive(
+  //             title: Text("CHECKMATE"),
+  //             actions: [
+  //               TextButton(
+  //                 onPressed: () {
+  //                   Navigator.pop(context);
+  
+  //                   resetGame();
+  //                 },
+  //                 child: Text("Restart the game"),
+  //               ),
+  //             ],
+  //           ),
+  //     );
+  //   }
+  //   isWhiteTurn = !isWhiteTurn;
+  // }
+
   void movePiece(int newRow, int newCol) {
-    // storing the killed pieces
+    // Store the killed piece
     if (board[newRow][newCol] != null) {
       var killedPiece = board[newRow][newCol];
       if (killedPiece!.isWhite) {
@@ -320,6 +376,7 @@ class _ChessGame3State extends State<ChessGame3> {
       }
     }
 
+    // Update king position if the moved piece is a king
     if (selectedPiece!.type == ChessPieceType.king) {
       if (selectedPiece!.isWhite) {
         whiteKingPosition = [newRow, newCol];
@@ -327,38 +384,47 @@ class _ChessGame3State extends State<ChessGame3> {
         blackKingPosition = [newRow, newCol];
       }
     }
-    if (isKingInChecked(!isWhiteTurn)) {
-      checkStatus = true;
-    } else {
-      checkStatus = false;
-    }
+
+    // Apply the move
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
+
+    // Check if the opponent's king is in check
     setState(() {
+      if (isKingInChecked(!isWhiteTurn)) {
+        checkStatus = true;
+      } else {
+        checkStatus = false;
+      }
+
+      // Clear selection
       selectedPiece = null;
       selectedRow = -1;
       selectedCol = -1;
       validMoves = [];
     });
+
+    // Check for checkmate
     if (isCheckMate(!isWhiteTurn)) {
       showDialog(
         context: context,
         builder:
             (context) => AlertDialog.adaptive(
-              title: Text("CHECKMATE"),
+              title: const Text(checkmateStr),
               actions: [
                 TextButton(
                   onPressed: () {
-                    
-      Navigator.pop(context);
-      resetGame();
+                    Navigator.pop(context);
+                    resetGame();
                   },
-                  child: Text("Restart the game"),
+                  child: const Text(restartStr),
                 ),
               ],
             ),
       );
     }
+
+    // Switch turns
     isWhiteTurn = !isWhiteTurn;
   }
 
@@ -493,9 +559,10 @@ class _ChessGame3State extends State<ChessGame3> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.brown[300],
       floatingActionButton: ElevatedButton(
         onPressed: resetGame,
-        child: Text("Restart"),
+        child: Text(restartStr),
       ),
       body: Column(
         children: [
@@ -510,9 +577,9 @@ class _ChessGame3State extends State<ChessGame3> {
               },
             ),
           ),
-          Text(checkStatus ? "CHECK ! ! !" : ""),
+          Text(checkStatus ? checkStr : ""),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: GridView.builder(
               itemCount: 64,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

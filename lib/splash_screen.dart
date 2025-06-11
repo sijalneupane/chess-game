@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_chess_game/chess_board.dart';
+import 'package:flutter_chess_game/chess_game3.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,7 +14,7 @@ class _SplashScreenState extends State<SplashScreen> {
     // TODO: implement initState
     super.initState();
     Future.delayed(Duration(seconds: 3), () {
-Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => ChessBoard(),), (route) => false);
+Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => ChessGame3(),), (route) => false);
     });
   }
   @override

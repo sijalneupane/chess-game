@@ -25,6 +25,9 @@ sqaureColor=Colors.green[200];
     return GestureDetector(
       onTap:onTap ,
       child: Container(
+        height: double.infinity,
+        width: double.infinity,
+        padding: EdgeInsets.all(0),
        margin: EdgeInsets.all(isValidMove?1:0),
         color: sqaureColor,
         child: piece?.symbol,
